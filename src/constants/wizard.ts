@@ -3,6 +3,9 @@ import type { WizardFormValues } from '../types/wizard'
 export const STORAGE_KEY = 'si-application-wizard-draft'
 export const STORAGE_VERSION = 1
 
+/** Drafts older than this TTL are cleared on load. */
+export const DRAFT_TTL_MS = 1000 * 60 * 60 * 24 * 7
+
 export const DEFAULT_VALUES: WizardFormValues = {
   userInfo: {
     name: '',
@@ -30,3 +33,9 @@ export const STEP_LABELS = [
   'Request Configuration',
   'Review & Confirm',
 ]
+
+export const STEP_HEADING_IDS = [
+  'user-info-heading',
+  'request-config-heading',
+  'review-heading',
+] as const

@@ -3,8 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '../../App'
-import { STORAGE_KEY, STORAGE_VERSION } from '../../constants/wizard'
+import { DRAFT_TTL_MS, STORAGE_KEY, STORAGE_VERSION } from '../../constants/wizard'
 import * as submission from '../../utils/submission'
+import { clearDraft, loadDraft } from '../../utils/storage'
 
 async function fillUserInfo(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/^name$/i), 'Jane Doe')
@@ -28,6 +29,20 @@ describe('ApplicationWizard', () => {
     expect(screen.getByRole('heading', { name: /user information/i })).toBeInTheDocument()
   })
 
+  it('rejects invalid email and phone formats with RegEx messages', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(screen.getByLabelText(/^name$/i), 'Jane Doe')
+    await user.type(screen.getByLabelText(/contact number/i), 'abc')
+    await user.type(screen.getByLabelText(/^email$/i), 'not-an-email')
+    await user.click(screen.getByRole('button', { name: /next/i }))
+
+    expect(await screen.findByText(/enter a valid contact number/i)).toBeInTheDocument()
+    expect(screen.getByText(/enter a valid email address/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /user information/i })).toBeInTheDocument()
+  })
+
   it('allows valid navigation from step 1 to step 2', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -38,6 +53,22 @@ describe('ApplicationWizard', () => {
     expect(
       await screen.findByRole('heading', { name: /request configuration/i }),
     ).toBeInTheDocument()
+  })
+
+  it('moves focus to the next step heading after navigation', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await fillUserInfo(user)
+    await user.click(screen.getByRole('button', { name: /next/i }))
+
+    const heading = await screen.findByRole('heading', {
+      name: /request configuration/i,
+    })
+
+    await waitFor(() => {
+      expect(heading).toHaveFocus()
+    })
   })
 
   it('supports adding, editing, and removing dynamic service items', async () => {
@@ -82,6 +113,20 @@ describe('ApplicationWizard', () => {
     expect(screen.getByText(/quantity:/i)).toBeInTheDocument()
   })
 
+  it('does not submit when pressing Enter on earlier steps', async () => {
+    const user = userEvent.setup()
+    const submitSpy = vi.spyOn(submission, 'submitApplication')
+
+    render(<App />)
+
+    await fillUserInfo(user)
+    await user.keyboard('{Enter}')
+
+    expect(submitSpy).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: /user information/i })).toBeInTheDocument()
+    expect(screen.queryByText(/application submitted/i)).not.toBeInTheDocument()
+  })
+
   it('restores draft data and step position from localStorage', async () => {
     localStorage.setItem(
       STORAGE_KEY,
@@ -112,11 +157,12 @@ describe('ApplicationWizard', () => {
     expect(screen.getByLabelText(/^email$/i)).toHaveValue('restored@example.com')
   })
 
-  it('does not crash when localStorage contains malformed JSON', () => {
+  it('clears corrupt localStorage drafts instead of crashing', () => {
     localStorage.setItem(STORAGE_KEY, '{ invalid json')
 
     expect(() => render(<App />)).not.toThrow()
     expect(screen.getByRole('heading', { name: /user information/i })).toBeInTheDocument()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 
   it('clears localStorage after a successful submission', async () => {
@@ -173,23 +219,78 @@ describe('ApplicationWizard', () => {
 })
 
 describe('storage utilities', () => {
-  it('returns null for unsupported draft versions', async () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('clears unsupported draft versions on load', () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         version: 999,
         currentStep: 2,
         formData: {
-          userInfo: { name: 'Old', phone: '123', email: 'old@example.com' },
+          userInfo: { name: 'Old', phone: '1234567', email: 'old@example.com' },
           requestItems: [],
         },
         updatedAt: new Date().toISOString(),
       }),
     )
 
-    render(<App />)
+    expect(loadDraft()).toBeNull()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
 
-    expect(screen.getByLabelText(/^name$/i)).toHaveValue('')
-    expect(screen.getByRole('heading', { name: /user information/i })).toBeInTheDocument()
+  it('clears expired drafts based on TTL', () => {
+    const expiredAt = new Date(Date.now() - DRAFT_TTL_MS - 1000).toISOString()
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: STORAGE_VERSION,
+        currentStep: 1,
+        formData: {
+          userInfo: {
+            name: 'Expired',
+            phone: '+1 555 000 1111',
+            email: 'expired@example.com',
+          },
+          requestItems: [],
+        },
+        updatedAt: expiredAt,
+      }),
+    )
+
+    expect(loadDraft()).toBeNull()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('clears drafts with invalid shape', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, broken: true }))
+
+    expect(loadDraft()).toBeNull()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it('keeps fresh valid drafts', () => {
+    const draft = {
+      version: STORAGE_VERSION,
+      currentStep: 0,
+      formData: {
+        userInfo: {
+          name: 'Fresh',
+          phone: '+1 555 000 1111',
+          email: 'fresh@example.com',
+        },
+        requestItems: [],
+      },
+      updatedAt: new Date().toISOString(),
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
+
+    expect(loadDraft()).toEqual(draft)
+    clearDraft()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
   })
 })

@@ -1,6 +1,5 @@
 import { useFormContext } from 'react-hook-form'
 
-import { EMAIL_PATTERN, PHONE_PATTERN } from '../../../constants/validation'
 import type { WizardFormValues } from '../../../types/wizard'
 import { FormField, TextInput } from '../../common/FormField'
 
@@ -13,7 +12,11 @@ export function UserInfoStep() {
   return (
     <section aria-labelledby="user-info-heading" className="space-y-5">
       <div>
-        <h2 id="user-info-heading" className="text-xl font-semibold text-slate-900">
+        <h2
+          id="user-info-heading"
+          tabIndex={-1}
+          className="text-xl font-semibold text-slate-900 outline-none"
+        >
           User information
         </h2>
         <p className="mt-1 text-sm text-slate-600">
@@ -26,13 +29,7 @@ export function UserInfoStep() {
           id="name"
           autoComplete="name"
           aria-invalid={Boolean(errors.userInfo?.name)}
-          {...register('userInfo.name', {
-            required: 'Name is required.',
-            minLength: {
-              value: 2,
-              message: 'Name must contain at least two characters.',
-            },
-          })}
+          {...register('userInfo.name')}
         />
       </FormField>
 
@@ -47,13 +44,7 @@ export function UserInfoStep() {
           inputMode="tel"
           autoComplete="tel"
           aria-invalid={Boolean(errors.userInfo?.phone)}
-          {...register('userInfo.phone', {
-            required: 'Contact number is required.',
-            pattern: {
-              value: PHONE_PATTERN,
-              message: 'Enter a valid contact number.',
-            },
-          })}
+          {...register('userInfo.phone')}
         />
       </FormField>
 
@@ -64,13 +55,7 @@ export function UserInfoStep() {
           inputMode="email"
           autoComplete="email"
           aria-invalid={Boolean(errors.userInfo?.email)}
-          {...register('userInfo.email', {
-            required: 'Email is required.',
-            pattern: {
-              value: EMAIL_PATTERN,
-              message: 'Enter a valid email address.',
-            },
-          })}
+          {...register('userInfo.email')}
         />
       </FormField>
     </section>

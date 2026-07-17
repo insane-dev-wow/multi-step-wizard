@@ -1,17 +1,31 @@
 import { useEffect, type RefObject } from 'react'
 
-function isElementObscured(element: HTMLElement): boolean {
-  const rect = element.getBoundingClientRect()
-  const viewport = window.visualViewport
-
+export function isElementObscured(
+  element: HTMLElement,
+  viewport: Pick<VisualViewport, 'height' | 'offsetTop'> | null = window.visualViewport,
+): boolean {
   if (!viewport) {
     return false
   }
 
+  const rect = element.getBoundingClientRect()
   const visibleBottom = viewport.offsetTop + viewport.height
   const footerReserve = 96
 
-  return rect.bottom > visibleBottom - footerReserve || rect.top < viewport.offsetTop
+  return (
+    rect.bottom > visibleBottom - footerReserve || rect.top < viewport.offsetTop
+  )
+}
+
+export function setVisualViewportHeight(height: number): void {
+  document.documentElement.style.setProperty(
+    '--visual-viewport-height',
+    `${height}px`,
+  )
+}
+
+export function clearVisualViewportHeight(): void {
+  document.documentElement.style.removeProperty('--visual-viewport-height')
 }
 
 export function useMobileViewport(contentRef: RefObject<HTMLElement | null>) {
@@ -23,10 +37,7 @@ export function useMobileViewport(contentRef: RefObject<HTMLElement | null>) {
     }
 
     const updateHeight = () => {
-      document.documentElement.style.setProperty(
-        '--visual-viewport-height',
-        `${viewport.height}px`,
-      )
+      setVisualViewportHeight(viewport.height)
     }
 
     updateHeight()
@@ -36,7 +47,7 @@ export function useMobileViewport(contentRef: RefObject<HTMLElement | null>) {
     return () => {
       viewport.removeEventListener('resize', updateHeight)
       viewport.removeEventListener('scroll', updateHeight)
-      document.documentElement.style.removeProperty('--visual-viewport-height')
+      clearVisualViewportHeight()
     }
   }, [])
 

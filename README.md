@@ -9,7 +9,7 @@ Deploy to Vercel or Netlify and add your production URL here.
 ## Tech Stack
 
 - **React + Vite + TypeScript** — fast local development and a simple production build pipeline
-- **React Hook Form** — unified form state, field-level validation, and `useFieldArray` for dynamic rows
+- **React Hook Form + Zod** — unified form state with a shared schema via `@hookform/resolvers`
 - **Tailwind CSS** — utility-first styling with minimal custom CSS
 - **React Context** — wizard navigation state only (`currentStep`)
 - **Vitest + React Testing Library** — behavior-focused automated tests
@@ -44,9 +44,9 @@ App
 
 ### Form field schemas without component bloat
 
-Form values live in a **single React Hook Form instance** wrapped by `FormProvider`. Each step is a separate component that calls `useFormContext()` instead of receiving dozens of props.
+Form values live in a **single React Hook Form instance** wrapped by `FormProvider`. Validation rules live in a shared **Zod schema** (`src/schemas/wizardSchema.ts`) and are wired through `zodResolver`, so step components stay presentational.
 
-Shared presentation pieces (`FormField`, `TextInput`, `TextArea`, `ErrorMessage`) keep markup consistent, while validation rules stay next to each field through `register()`. Nested form shape (`userInfo`, `requestItems`) keeps step boundaries clear:
+Shared presentation pieces (`FormField`, `TextInput`, `TextArea`, `ErrorMessage`) keep markup consistent. Nested form shape (`userInfo`, `requestItems`) keeps step boundaries clear:
 
 ```ts
 {
@@ -55,7 +55,7 @@ Shared presentation pieces (`FormField`, `TextInput`, `TextArea`, `ErrorMessage`
 }
 ```
 
-Step-specific validation is triggered through React Hook Form’s `trigger()` API so only the active step is validated when the user clicks **Next**.
+Step-specific validation is triggered through React Hook Form’s `trigger()` API so only the active step is validated when the user clicks **Next**. After each step change, `useStepFocus` moves focus to the new step heading for keyboard and screen-reader users.
 
 ### State management
 
@@ -70,8 +70,7 @@ Form data is **not duplicated** in context. Hidden steps remain registered becau
 
 ## Validation
 
-- Email: `EMAIL_PATTERN`
-- Phone: `PHONE_PATTERN`
+- Shared Zod schema with email/phone RegEx patterns
 - Step 1: required name (min 2 chars), phone, email
 - Step 2: validates each dynamic row when present; empty array is allowed
 - `mode: "onBlur"` — first validation on blur
@@ -86,6 +85,7 @@ Form data is **not duplicated** in context. Hidden steps remain registered becau
 - Draft is saved immediately before step changes
 - Draft is cleared **only after successful submission**
 - Failed submissions keep the draft intact
+- Corrupt, version-mismatched, or expired drafts (7-day TTL) are actively cleared on load
 
 ## Mobile Viewport & Keyboard Handling
 
@@ -108,13 +108,17 @@ npm run test
 Coverage includes:
 
 1. Step validation blocks invalid navigation
-2. Valid navigation to step 2
-3. Dynamic add/edit/remove service items
-4. Review summary rendering
-5. Draft restoration from LocalStorage
-6. Malformed LocalStorage does not crash the app
-7. Successful submission clears LocalStorage
-8. Failed submission preserves the draft
+2. Invalid email/phone RegEx rejection
+3. Valid navigation to step 2
+4. Focus moves to the next step heading
+5. Dynamic add/edit/remove service items
+6. Review summary rendering
+7. Draft restoration from LocalStorage
+8. Corrupt LocalStorage drafts are cleared safely
+9. Successful submission clears LocalStorage
+10. Failed submission preserves the draft
+11. Expired / version-mismatched draft cleanup
+12. Mobile keyboard `visualViewport` resize and focus-scroll behavior
 
 ## Deployment
 
@@ -128,6 +132,6 @@ Deploy the `dist` folder to Vercel or Netlify. Test on a physical mobile device 
 
 ## Technical Note (Assessment Summary)
 
-**Form schemas:** One React Hook Form instance owns all values. Steps consume shared context through `FormProvider`, validation rules stay colocated with fields, and `trigger()` enforces linear step progression without copying state into React Context.
+**Form schemas:** One React Hook Form instance owns all values. A Zod schema centralizes validation, steps consume shared context through `FormProvider`, and `trigger()` enforces linear step progression without copying state into React Context.
 
 **Viewport recalculation:** The layout combines `100dvh`, a `visualViewport`-driven CSS variable, a scrollable main region, sticky footer spacing, and conditional `scrollIntoView()` on focus so inputs remain visible when mobile keyboards resize the viewport.

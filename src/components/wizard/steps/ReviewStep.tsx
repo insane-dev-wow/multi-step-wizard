@@ -9,7 +9,11 @@ export function ReviewStep() {
   return (
     <section aria-labelledby="review-heading" className="space-y-6">
       <div>
-        <h2 id="review-heading" className="text-xl font-semibold text-slate-900">
+        <h2
+          id="review-heading"
+          tabIndex={-1}
+          className="text-xl font-semibold text-slate-900 outline-none"
+        >
           Review & confirm
         </h2>
         <p className="mt-1 text-sm text-slate-600">

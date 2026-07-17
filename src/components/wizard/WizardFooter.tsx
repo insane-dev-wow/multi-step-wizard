@@ -7,11 +7,13 @@ import type { WizardFormValues } from '../../types/wizard'
 interface WizardFooterProps {
   isSubmitting: boolean
   persistDraftNow: () => void
+  onSubmit: () => void
 }
 
 export function WizardFooter({
   isSubmitting,
   persistDraftNow,
+  onSubmit,
 }: WizardFooterProps) {
   const { currentStep, nextStep, previousStep } = useWizard()
   const { trigger } = useFormContext<WizardFormValues>()
@@ -56,7 +58,8 @@ export function WizardFooter({
 
         {isLastStep ? (
           <button
-            type="submit"
+            type="button"
+            onClick={onSubmit}
             disabled={isSubmitting}
             className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition enabled:hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >

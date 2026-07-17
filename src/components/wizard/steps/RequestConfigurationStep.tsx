@@ -22,7 +22,8 @@ export function RequestConfigurationStep() {
       <div>
         <h2
           id="request-config-heading"
-          className="text-xl font-semibold text-slate-900"
+          tabIndex={-1}
+          className="text-xl font-semibold text-slate-900 outline-none"
         >
           Request configuration
         </h2>
@@ -68,9 +69,7 @@ export function RequestConfigurationStep() {
                   <TextInput
                     id={`requestItems.${index}.serviceName`}
                     aria-invalid={Boolean(itemErrors?.serviceName)}
-                    {...register(`requestItems.${index}.serviceName`, {
-                      required: 'Service name is required.',
-                    })}
+                    {...register(`requestItems.${index}.serviceName`)}
                   />
                 </FormField>
 
@@ -82,12 +81,7 @@ export function RequestConfigurationStep() {
                   <TextArea
                     id={`requestItems.${index}.description`}
                     aria-invalid={Boolean(itemErrors?.description)}
-                    {...register(`requestItems.${index}.description`, {
-                      maxLength: {
-                        value: 500,
-                        message: 'Description cannot exceed 500 characters.',
-                      },
-                    })}
+                    {...register(`requestItems.${index}.description`)}
                   />
                 </FormField>
 
@@ -104,11 +98,6 @@ export function RequestConfigurationStep() {
                     aria-invalid={Boolean(itemErrors?.quantity)}
                     {...register(`requestItems.${index}.quantity`, {
                       valueAsNumber: true,
-                      required: 'Quantity is required.',
-                      min: {
-                        value: 1,
-                        message: 'Quantity must be at least one.',
-                      },
                     })}
                   />
                 </FormField>

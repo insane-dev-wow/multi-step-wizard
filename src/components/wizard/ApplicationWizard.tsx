@@ -1,14 +1,18 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   FormProvider,
   useForm,
+  type Resolver,
   type SubmitHandler,
 } from 'react-hook-form'
 
-import { DEFAULT_VALUES } from '../../constants/wizard'
+import { DEFAULT_VALUES, TOTAL_STEPS } from '../../constants/wizard'
 import { useWizard } from '../../context/WizardContext'
 import { useDraftStorage } from '../../hooks/useDraftStorage'
 import { useMobileViewport } from '../../hooks/useMobileViewport'
+import { useStepFocus } from '../../hooks/useStepFocus'
+import { wizardFormSchema } from '../../schemas/wizardSchema'
 import type { WizardFormValues } from '../../types/wizard'
 import { submitApplication } from '../../utils/submission'
 import { StepIndicator } from './StepIndicator'
@@ -26,6 +30,7 @@ export function ApplicationWizard() {
 
   const methods = useForm<WizardFormValues>({
     defaultValues: DEFAULT_VALUES,
+    resolver: zodResolver(wizardFormSchema) as Resolver<WizardFormValues>,
     mode: 'onBlur',
     reValidateMode: 'onChange',
     shouldUnregister: false,
@@ -38,8 +43,14 @@ export function ApplicationWizard() {
   })
 
   useMobileViewport(contentRef)
+  useStepFocus(currentStep)
 
   const onSubmit: SubmitHandler<WizardFormValues> = async (data) => {
+    // Only allow submission from the review step via the Submit button.
+    if (currentStep !== TOTAL_STEPS - 1) {
+      return
+    }
+
     setSubmitError(null)
     setIsSubmitting(true)
 
@@ -54,6 +65,17 @@ export function ApplicationWizard() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    // Block Enter-key / implicit submits on earlier steps.
+    event.preventDefault()
+
+    if (currentStep !== TOTAL_STEPS - 1 || isSubmitting) {
+      return
+    }
+
+    void methods.handleSubmit(onSubmit)(event)
   }
 
   const handleStartNew = () => {
@@ -86,7 +108,7 @@ export function ApplicationWizard() {
   return (
     <FormProvider {...methods}>
       <form
-        onSubmit={methods.handleSubmit(onSubmit)}
+        onSubmit={handleFormSubmit}
         className="wizard-layout mx-auto flex w-full max-w-3xl flex-col bg-slate-50"
         noValidate
       >
@@ -107,6 +129,13 @@ export function ApplicationWizard() {
         <WizardFooter
           isSubmitting={isSubmitting}
           persistDraftNow={persistDraftNow}
+          onSubmit={() => {
+            if (currentStep !== TOTAL_STEPS - 1 || isSubmitting) {
+              return
+            }
+
+            void methods.handleSubmit(onSubmit)()
+          }}
         />
       </form>
     </FormProvider>
