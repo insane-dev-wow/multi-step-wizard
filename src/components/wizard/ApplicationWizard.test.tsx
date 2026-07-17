@@ -81,16 +81,21 @@ describe('ApplicationWizard', () => {
 
     await user.click(screen.getByRole('button', { name: /add service/i }))
 
-    const serviceName = screen.getByLabelText(/^service name$/i)
-    await user.type(serviceName, 'Cloud Migration')
-    await user.type(screen.getByLabelText(/^description$/i), 'Migrate workloads to Azure')
-    await user.clear(screen.getByLabelText(/^quantity$/i))
-    await user.type(screen.getByLabelText(/^quantity$/i), '3')
+    const firstServiceName = screen.getByLabelText(/^service name$/i)
+    await user.type(firstServiceName, 'Older Service')
 
-    expect(serviceName).toHaveValue('Cloud Migration')
+    await user.click(screen.getByRole('button', { name: /add service/i }))
 
-    await user.click(screen.getByRole('button', { name: /remove/i }))
-    expect(screen.queryByLabelText(/^service name$/i)).not.toBeInTheDocument()
+    const serviceNames = screen.getAllByLabelText(/^service name$/i)
+    expect(serviceNames).toHaveLength(2)
+    expect(serviceNames[0]).toHaveValue('')
+    expect(serviceNames[1]).toHaveValue('Older Service')
+
+    await user.type(serviceNames[0], 'Newer Service')
+    expect(serviceNames[0]).toHaveValue('Newer Service')
+
+    await user.click(screen.getAllByRole('button', { name: /remove/i })[0])
+    expect(screen.getByLabelText(/^service name$/i)).toHaveValue('Older Service')
   })
 
   it('shows a review summary with values from earlier steps', async () => {

@@ -10,7 +10,7 @@ export function RequestConfigurationStep() {
     formState: { errors },
   } = useFormContext<WizardFormValues>()
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, prepend, remove } = useFieldArray({
     control,
     name: 'requestItems',
   })
@@ -19,22 +19,38 @@ export function RequestConfigurationStep() {
 
   return (
     <section aria-labelledby="request-config-heading" className="space-y-5">
-      <div>
-        <h2
-          id="request-config-heading"
-          tabIndex={-1}
-          className="text-xl font-semibold text-slate-900 outline-none"
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2
+            id="request-config-heading"
+            tabIndex={-1}
+            className="text-xl font-semibold text-slate-900 outline-none"
+          >
+            Request configuration
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Add optional services or items for your contract request.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            prepend({
+              serviceName: '',
+              description: '',
+              quantity: 1,
+            })
+          }
+          className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 sm:px-4"
         >
-          Request configuration
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Add optional services or items for your contract request.
-        </p>
+          Add service
+        </button>
       </div>
 
       {fields.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
-          No services added yet. Use the button below to add your first item.
+          No services added yet. Use Add service to create your first item.
         </p>
       ) : (
         <div className="space-y-4">
@@ -106,20 +122,6 @@ export function RequestConfigurationStep() {
           })}
         </div>
       )}
-
-      <button
-        type="button"
-        onClick={() =>
-          append({
-            serviceName: '',
-            description: '',
-            quantity: 1,
-          })
-        }
-        className="w-full rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
-      >
-        Add service
-      </button>
     </section>
   )
 }
