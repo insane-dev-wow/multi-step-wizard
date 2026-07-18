@@ -1,6 +1,6 @@
 # Multi-Step Application & Contract Request Wizard
 
-A mobile-optimized three-step application and contract-request wizard built for a technical assessment. It demonstrates multi-step form state synchronization, dynamic validation, local draft recovery, and mobile keyboard/viewport handling.
+A mobile-optimized three-step "Application & Contract Request" wizard built for a technical assessment. It focuses on multi-step global state synchronization, dynamic RegEx validation, crash-resilient local draft autosave, and mobile virtual-keyboard/viewport handling.
 
 ## Live Demo
 
@@ -8,8 +8,8 @@ Deploy to Vercel or Netlify and add your production URL here.
 
 ## Tech Stack
 
-- **React + Vite + TypeScript** — fast local development and a simple production build pipeline
-- **React Hook Form + Zod** — unified form state with a shared schema via `@hookform/resolvers`
+- **React + Vite + TypeScript** — fast dev server and a simple production build
+- **React Hook Form + Zod** — one unified form instance with a shared schema via `@hookform/resolvers`
 - **Tailwind CSS** — utility-first styling with minimal custom CSS
 - **React Context** — wizard navigation state only (`currentStep`)
 - **Vitest + React Testing Library** — behavior-focused automated tests
@@ -21,20 +21,47 @@ npm install
 npm run dev
 ```
 
+The dev server runs at `http://127.0.0.1:3000` (bound to IPv4 to avoid `localhost` IPv6 issues on Windows).
+
 Other commands:
 
 ```bash
-npm run build
-npm run test
-npm run preview
+npm run build     # type-check + production build
+npm run test      # run the Vitest suite once
+npm run preview   # preview the production build
+npm run lint      # run ESLint
 ```
+
+## Core Features
+
+### 1. Three-step wizard with linear enforcement
+
+| Step | Screen | Contents |
+| --- | --- | --- |
+| 1 | User Info | Name, contact number, email |
+| 2 | Request Configuration | Dynamic add/remove/edit list of services |
+| 3 | Review & Confirm | Immutable summary before mock submission |
+
+The **Next** button validates only the current step via React Hook Form's `trigger()`. Users can advance only when the active step passes validation, but errors are shown on click rather than permanently disabling the button.
+
+### 2. Validation & draft recovery
+
+- Real-time RegEx validation for email and phone
+- Errors toggle on blur and update while typing as the user corrects them
+- Debounced LocalStorage autosave restores the exact step and field values after a crash or refresh
+- Draft is cleared **only after a successful submit**
+
+### 3. Mobile web & WebView optimization
+
+- Sticky action bar (Previous / Next / Submit) pinned to the screen base
+- Layout height tracks the visual viewport so the rising keyboard never covers inputs or hides the footer
 
 ## Architecture
 
 ```
 App
 └── WizardProvider
-    └── ApplicationWizard
+    └── ApplicationWizard              (single useForm instance + FormProvider)
         ├── StepIndicator
         ├── UserInfoStep
         ├── RequestConfigurationStep
@@ -42,11 +69,36 @@ App
         └── WizardFooter
 ```
 
+### Project structure
+
+```
+src/
+├── components/
+│   ├── common/FormField.tsx           # FormField, TextInput, TextArea, ErrorMessage
+│   └── wizard/
+│       ├── ApplicationWizard.tsx      # form instance, submit flow, layout
+│       ├── StepIndicator.tsx
+│       ├── WizardFooter.tsx           # step validation + navigation
+│       └── steps/
+│           ├── UserInfoStep.tsx
+│           ├── RequestConfigurationStep.tsx
+│           └── ReviewStep.tsx
+├── context/WizardContext.tsx          # currentStep + navigation only
+├── hooks/
+│   ├── useDraftStorage.ts             # debounced save / restore / clear
+│   ├── useMobileViewport.ts           # visualViewport + keyboard focus handling
+│   └── useStepFocus.ts                # focus the new step heading
+├── schemas/wizardSchema.ts            # shared Zod schema
+├── constants/{validation,wizard}.ts
+├── utils/{storage,submission}.ts
+└── types/wizard.ts                    # types inferred from the Zod schema
+```
+
 ### Form field schemas without component bloat
 
-Form values live in a **single React Hook Form instance** wrapped by `FormProvider`. Validation rules live in a shared **Zod schema** (`src/schemas/wizardSchema.ts`) and are wired through `zodResolver`, so step components stay presentational.
+All form values live in a **single React Hook Form instance** wrapped by `FormProvider`. Validation rules live in a shared **Zod schema** (`src/schemas/wizardSchema.ts`) wired through `zodResolver`, so step components stay presentational and read errors through `useFormContext()`.
 
-Shared presentation pieces (`FormField`, `TextInput`, `TextArea`, `ErrorMessage`) keep markup consistent. Nested form shape (`userInfo`, `requestItems`) keeps step boundaries clear:
+Shared presentation pieces (`FormField`, `TextInput`, `TextArea`, `ErrorMessage`) keep markup consistent. A nested form shape keeps step boundaries clear:
 
 ```ts
 {
@@ -55,7 +107,7 @@ Shared presentation pieces (`FormField`, `TextInput`, `TextArea`, `ErrorMessage`
 }
 ```
 
-Step-specific validation is triggered through React Hook Form’s `trigger()` API so only the active step is validated when the user clicks **Next**. After each step change, `useStepFocus` moves focus to the new step heading for keyboard and screen-reader users.
+The dynamic list uses `useFieldArray`; new services are **prepended** (newest on top) and each row is keyed by the field's stable `id`. After each step change, `useStepFocus` moves focus to the new step heading for keyboard and screen-reader users.
 
 ### State management
 
@@ -63,43 +115,45 @@ Step-specific validation is triggered through React Hook Form’s `trigger()` AP
 | --- | --- |
 | Input values | React Hook Form |
 | Current step / navigation | React Context |
-| Submit / success UI | Local component state |
+| Submit / success / error UI | Local component state |
 | Draft persistence | `useDraftStorage` hook + LocalStorage |
 
 Form data is **not duplicated** in context. Hidden steps remain registered because `shouldUnregister: false`.
 
 ## Validation
 
-- Shared Zod schema with email/phone RegEx patterns
-- Step 1: required name (min 2 chars), phone, email
-- Step 2: validates each dynamic row when present; empty array is allowed
+- Shared Zod schema; email/phone use the RegEx patterns in `src/constants/validation.ts`
+  - Email: `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
+  - Phone: `/^\+?[0-9\s()-]{7,20}$/`
+- Step 1: name (required, min 2 chars), phone, email
+- Step 2: each service row validates name/description/quantity; an empty list is allowed
 - `mode: "onBlur"` — first validation on blur
 - `reValidateMode: "onChange"` — corrections update errors while typing
+
+## Submission
+
+- Submit is only reachable on the Review step; `Enter` on earlier steps never submits
+- The Submit button is disabled while submitting to prevent duplicate requests
+- On success: the draft is cleared, the form resets, and a success screen is shown
+- On failure: the draft is preserved and an error message is displayed
 
 ## Draft Persistence
 
 - **Key:** `si-application-wizard-draft`
 - **Stored shape:** `{ version, currentStep, formData, updatedAt }`
-- Draft is restored once on mount via `reset()`
-- Writes are debounced (~500ms)
-- Draft is saved immediately before step changes
-- Draft is cleared **only after successful submission**
-- Failed submissions keep the draft intact
-- Corrupt, version-mismatched, or expired drafts (7-day TTL) are actively cleared on load
+- Restored once on mount via `reset()` and `setCurrentStep()`
+- Writes are debounced (~500ms); the latest step is also saved immediately before navigation
+- Cleared **only after a successful submission**; failed submissions keep the draft
+- Corrupt, invalid-shape, version-mismatched, or expired drafts (7-day TTL) are actively cleared on load
 
 ## Mobile Viewport & Keyboard Handling
 
-Mobile layout uses a scrollable content region with a sticky footer:
-
-- Layout height tracks `visualViewport` (`--visual-viewport-height`) with smooth resize
-- `interactive-widget=resizes-content` helps browsers shrink content when the keyboard opens
-- Sticky footer stays inside the visible viewport, not behind the keyboard
-- On focus (text, email, tel, textarea, number), fields are scrolled into view
-- Visibility is re-checked after keyboard animation settle delays and viewport resize
-- `16px` input font size prevents iOS focus zoom
-- Safe-area padding protects controls on devices with a home indicator
-
-This keeps focused fields visible when the virtual keyboard opens in mobile browsers and WebViews.
+- Layout height tracks `window.visualViewport` through the `--visual-viewport-height` CSS variable with a smooth transition
+- `interactive-widget=resizes-content` in the viewport meta lets supporting browsers shrink content when the keyboard opens
+- The sticky footer stays inside the visible viewport instead of hiding behind the keyboard
+- On focus for every editable field (text, tel, email, textarea, number), the field is scrolled clear of the footer
+- Visibility is re-checked after keyboard-settle delays and on viewport resize
+- `16px` inputs prevent iOS focus zoom; safe-area padding protects the footer on devices with a home indicator
 
 ## Automated Tests
 
@@ -110,30 +164,29 @@ npm run test
 Coverage includes:
 
 1. Step validation blocks invalid navigation
-2. Invalid email/phone RegEx rejection
-3. Valid navigation to step 2
+2. Invalid email / phone RegEx rejection (UI and schema)
+3. Valid navigation from step 1 to step 2
 4. Focus moves to the next step heading
-5. Dynamic add/edit/remove service items
-6. Review summary rendering
-7. Draft restoration from LocalStorage
-8. Corrupt LocalStorage drafts are cleared safely
-9. Successful submission clears LocalStorage
-10. Failed submission preserves the draft
-11. Expired / version-mismatched draft cleanup
-12. Mobile keyboard `visualViewport` resize and focus-scroll behavior
+5. Dynamic add / edit / remove service items (newest first)
+6. Review summary reflects earlier steps
+7. `Enter` on earlier steps does not submit
+8. Draft restoration from LocalStorage
+9. Corrupt LocalStorage drafts are cleared safely
+10. Successful submission clears LocalStorage
+11. Failed submission preserves the draft
+12. Expired / version-mismatched / invalid-shape draft cleanup
+13. Mobile keyboard `visualViewport` resize + focus-scroll across field types
 
 ## Deployment
-
-Build the production bundle:
 
 ```bash
 npm run build
 ```
 
-Deploy the `dist` folder to Vercel or Netlify. Test on a physical mobile device after deployment to verify keyboard and sticky footer behavior.
+Deploy the `dist` folder to Vercel or Netlify, then test on a physical mobile device to verify the virtual keyboard behavior and sticky footer.
 
 ## Technical Note (Assessment Summary)
 
-**Form schemas:** One React Hook Form instance owns all values. A Zod schema centralizes validation, steps consume shared context through `FormProvider`, and `trigger()` enforces linear step progression without copying state into React Context.
+**Form schemas without component bloat:** One React Hook Form instance owns all values, a single Zod schema centralizes validation, steps consume shared context through `FormProvider`, and `trigger()` enforces linear step progression — so no form state is duplicated into React Context and steps avoid prop drilling.
 
-**Viewport recalculation:** The layout combines `100dvh`, a `visualViewport`-driven CSS variable, a scrollable main region, sticky footer spacing, and conditional `scrollIntoView()` on focus so inputs remain visible when mobile keyboards resize the viewport.
+**Cross-device viewport recalculation:** The layout binds its height to a `visualViewport`-driven CSS variable, keeps the content region scrollable with a sticky footer, and re-runs a focus-visibility check (with keyboard-settle retries and resize listeners) so inputs stay above the keyboard and action bar on mobile browsers and WebViews.
