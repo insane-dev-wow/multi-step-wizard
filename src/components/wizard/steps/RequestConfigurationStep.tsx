@@ -84,6 +84,9 @@ export function RequestConfigurationStep() {
                 >
                   <TextInput
                     id={`requestItems.${index}.serviceName`}
+                    type="text"
+                    inputMode="text"
+                    enterKeyHint="next"
                     aria-invalid={Boolean(itemErrors?.serviceName)}
                     {...register(`requestItems.${index}.serviceName`)}
                   />
@@ -96,6 +99,7 @@ export function RequestConfigurationStep() {
                 >
                   <TextArea
                     id={`requestItems.${index}.description`}
+                    enterKeyHint="next"
                     aria-invalid={Boolean(itemErrors?.description)}
                     {...register(`requestItems.${index}.description`)}
                   />
@@ -111,6 +115,7 @@ export function RequestConfigurationStep() {
                     type="number"
                     min={1}
                     inputMode="numeric"
+                    enterKeyHint="done"
                     aria-invalid={Boolean(itemErrors?.quantity)}
                     {...register(`requestItems.${index}.quantity`, {
                       valueAsNumber: true,

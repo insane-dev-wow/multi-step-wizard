@@ -27,7 +27,10 @@ export function UserInfoStep() {
       <FormField id="name" label="Name" error={errors.userInfo?.name?.message}>
         <TextInput
           id="name"
+          type="text"
+          inputMode="text"
           autoComplete="name"
+          enterKeyHint="next"
           aria-invalid={Boolean(errors.userInfo?.name)}
           {...register('userInfo.name')}
         />
@@ -43,6 +46,7 @@ export function UserInfoStep() {
           type="tel"
           inputMode="tel"
           autoComplete="tel"
+          enterKeyHint="next"
           aria-invalid={Boolean(errors.userInfo?.phone)}
           {...register('userInfo.phone')}
         />
@@ -54,6 +58,7 @@ export function UserInfoStep() {
           type="email"
           inputMode="email"
           autoComplete="email"
+          enterKeyHint="done"
           aria-invalid={Boolean(errors.userInfo?.email)}
           {...register('userInfo.email')}
         />

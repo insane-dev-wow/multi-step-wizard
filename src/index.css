@@ -17,6 +17,9 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --visual-viewport-height: 100dvh;
+  --visual-viewport-offset-top: 0px;
+  --keyboard-inset: 0;
 }
 
 *,
@@ -25,32 +28,71 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
   min-width: 320px;
+  height: 100%;
+  overflow: hidden;
 }
 
 #root {
-  min-height: 100dvh;
+  height: var(--visual-viewport-height, 100dvh);
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: var(--visual-viewport-height, 100dvh);
+  max-height: var(--visual-viewport-height, 100dvh);
+  transform: translateY(var(--visual-viewport-offset-top, 0px));
+  transition:
+    height 160ms ease,
+    transform 160ms ease;
+  overflow: hidden;
+  background-color: #f1f5f9;
+}
+
+.app-header {
+  flex-shrink: 0;
 }
 
 .wizard-layout {
-  min-height: calc(var(--visual-viewport-height, 100dvh) - 4.5rem);
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .wizard-content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
+  scroll-padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
 }
 
 .wizard-footer {
   position: sticky;
   bottom: 0;
   z-index: 20;
+  flex-shrink: 0;
   padding-bottom: env(safe-area-inset-bottom);
+  background-color: rgb(255 255 255 / 0.96);
+  box-shadow: 0 -1px 0 rgb(15 23 42 / 0.08);
+}
+
+/* Keep focused fields clear of the sticky action bar while typing. */
+html[data-keyboard-open='true'] .wizard-content {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+
+/* Prevent iOS auto-zoom on focus (requires >= 16px). */
+.wizard-content input,
+.wizard-content textarea,
+.wizard-content select {
+  font-size: 16px;
 }

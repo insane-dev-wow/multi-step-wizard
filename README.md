@@ -91,11 +91,13 @@ Form data is **not duplicated** in context. Hidden steps remain registered becau
 
 Mobile layout uses a scrollable content region with a sticky footer:
 
-- `100dvh` and `visualViewport` height CSS variable for dynamic viewport sizing
-- `overflow-y: auto` on `.wizard-content`
-- Bottom padding reserves space for sticky actions + `env(safe-area-inset-bottom)`
-- `useMobileViewport` listens to `visualViewport` resize events
-- On focus, inputs scroll into view only when obscured by the keyboard or footer
+- Layout height tracks `visualViewport` (`--visual-viewport-height`) with smooth resize
+- `interactive-widget=resizes-content` helps browsers shrink content when the keyboard opens
+- Sticky footer stays inside the visible viewport, not behind the keyboard
+- On focus (text, email, tel, textarea, number), fields are scrolled into view
+- Visibility is re-checked after keyboard animation settle delays and viewport resize
+- `16px` input font size prevents iOS focus zoom
+- Safe-area padding protects controls on devices with a home indicator
 
 This keeps focused fields visible when the virtual keyboard opens in mobile browsers and WebViews.
 
